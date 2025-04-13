@@ -62,8 +62,8 @@ impl PheromoneSystem {
     pub fn update(&mut self, delta_time: f32) {
         // Evaporation rate controls how quickly pheromones fade
         // Current rate: 0.04 * delta_time (4% per second if delta_time is in seconds)
-        // Increase this value for faster evaporation, decrease for longer-lasting pheromones
-        let evaporation_rate = 0.02 * delta_time;
+        // Decrease this value for longer-lasting pheromones that create more persistent trails
+        let evaporation_rate = 0.005 * delta_time; // Reduced for much longer-lasting pheromones
         
         let mut to_remove = Vec::new();
         
@@ -72,9 +72,8 @@ impl PheromoneSystem {
             *strength -= evaporation_rate;
             
             // Threshold for removing weak pheromones (currently 0.003)
-            // Increase this value to remove pheromones more aggressively
-            // Decrease to allow weaker pheromones to persist longer
-            if *strength <= 0.003 {
+            // Decrease this value to allow weaker pheromones to persist longer
+            if *strength <= 0.001 { // Lower threshold for pheromone removal
                 to_remove.push(*key);
             }
         }
@@ -93,14 +92,17 @@ impl PheromoneSystem {
             let mut pheromone = CircleShape::new(self.grid_size / 2.0, 8);
             pheromone.set_position(Vector2f::new(x, y));
             
-            let alpha = (*strength * 200.0).min(255.0) as u8;
+            // Enhance alpha value to make pheromones more visible
+            let alpha = (*strength * 255.0).min(255.0) as u8;
             
             match pheromone_type {
                 PheromoneType::Food => {
-                    pheromone.set_fill_color(Color::rgba(0, 255, 0, alpha));
+                    // Brighter green for food pheromones
+                    pheromone.set_fill_color(Color::rgba(0, 255, 100, alpha));
                 }
                 PheromoneType::Home => {
-                    pheromone.set_fill_color(Color::rgba(255, 0, 255, alpha));
+                    // Brighter magenta for home pheromones
+                    pheromone.set_fill_color(Color::rgba(255, 50, 255, alpha));
                 }
             }
             

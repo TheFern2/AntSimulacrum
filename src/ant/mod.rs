@@ -31,21 +31,23 @@ impl Ant {
         
         // Deposit pheromones every so often
         if self.pheromone_deposit_timer <= 0.0 {
-            // Reset timer
-            self.pheromone_deposit_timer = 1.0; // deposit less frequently (1.0 second instead of 0.5)
+            // Reset timer - shorter frequency to create better trails
+            self.pheromone_deposit_timer = 0.5; // deposit more frequently
             
             // Deposit appropriate pheromone based on state
+            // Food pheromones when carrying food, Home pheromones when searching
+            // This was backwards before! (was opposite of what ants actually do)
             let pheromone_type = if self.carrying_food {
-                PheromoneType::Home
+                PheromoneType::Food // Leave food trail when carrying food
             } else {
-                PheromoneType::Food
+                PheromoneType::Home // Leave home trail when searching
             };
             
-            // Only deposit strong pheromones when actually carrying food or just found food
+            // Only deposit strong pheromones when actually carrying food or returning to nest
             let strength = if self.carrying_food {
-                0.4 // Stronger pheromone when carrying food (increased from 0.3)
+                0.8 // Stronger pheromone when carrying food
             } else {
-                0.15 // Slightly stronger pheromone when searching (increased from 0.1)
+                0.3 // Medium strength when searching
             };
             
             environment.pheromone_system().add_pheromone(
@@ -56,12 +58,12 @@ impl Ant {
             );
         }
         
-        // Add more randomness to help break out of loops - 10% chance of random direction change per second
-        if rand::random::<f32>() < 0.1 * delta_time {
+        // Reduced random movement chance - let pheromone following be more dominant
+        if rand::random::<f32>() < 0.05 * delta_time {
             self.direction += (rand::random::<f32>() - 0.5) * std::f32::consts::PI;
         } 
-        // Attempt to follow pheromones most of the time
-        else if rand::random::<f32>() < 0.8 { // 80% chance to follow pheromones
+        // Increased chance to follow pheromones
+        else if rand::random::<f32>() < 0.9 { // 90% chance to follow pheromones (increased from 80%)
             self.follow_pheromones(environment);
         }
         
@@ -147,14 +149,16 @@ impl Ant {
     
     fn follow_pheromones(&mut self, environment: &Environment) {
         // Determine which pheromone to follow based on current state
+        // When carrying food, follow Home pheromones to return home
+        // When not carrying food, follow Food pheromones to find food
         let pheromone_type = if self.carrying_food {
-            PheromoneType::Home
+            PheromoneType::Home  // Follow home trails when carrying food
         } else {
-            PheromoneType::Food
+            PheromoneType::Food  // Follow food trails when searching
         };
         
         // Check pheromones in multiple directions
-        let num_directions = 8;
+        let num_directions = 12; // Increased from 8
         let best_direction = self.find_strongest_pheromone_direction(environment, pheromone_type, num_directions);
         
         // If we found a direction with pheromones, adjust our direction towards it
@@ -162,14 +166,23 @@ impl Ant {
             // Calculate the angle difference between current direction and pheromone direction
             let angle_diff = (best_dir - self.direction + std::f32::consts::PI * 3.0) % (std::f32::consts::PI * 2.0) - std::f32::consts::PI;
             
+            // Improved logic to prevent circular trails
             // Only turn if the pheromone is roughly ahead of us (within 120 degrees of forward)
-            // This prevents ants from doing U-turns to follow their own trails
             if angle_diff.abs() < std::f32::consts::PI * 2.0/3.0 {
                 // Gradually turn towards the best direction
-                self.direction += angle_diff * 0.3; // Turn 30% of the way
-            } else if rand::random::<f32>() < 0.05 {
+                // Increased turn rate to make following more effective
+                self.direction += angle_diff * 0.7; // Turn 70% of the way for more effective following
+            } else if rand::random::<f32>() < 0.1 {
                 // Small chance to make a big turn anyway, to avoid getting stuck
-                self.direction += angle_diff * 0.3;
+                self.direction += angle_diff * 0.4;
+            }
+            
+            // Add a small random variation to prevent perfect following that might lead to circles
+            self.direction += (rand::random::<f32>() - 0.5) * 0.2;
+        } else {
+            // If no pheromone found, increase random movement slightly
+            if rand::random::<f32>() < 0.4 {
+                self.direction += (rand::random::<f32>() - 0.5) * std::f32::consts::PI * 0.5;
             }
         }
     }
@@ -180,19 +193,24 @@ impl Ant {
         pheromone_type: PheromoneType,
         num_directions: usize
     ) -> Option<f32> {
-        let sense_distance = 30.0; // Increased sensing distance
-        let min_sense_distance = 10.0; // Minimum distance to check - avoid sensing own pheromones
-        let mut best_strength = 0.08; // Lower threshold to detect pheromones
+        let sense_distance = 40.0; // Increased sensing distance for better trail finding
+        let min_sense_distance = 5.0; // Reduced minimum distance to better sense nearby trails
+        let mut best_strength = 0.05; // Lower threshold to detect weaker pheromones
         let mut best_direction = None;
+        
+        // Use the passed num_directions
         
         // Check in multiple directions
         for i in 0..num_directions {
             let angle = (i as f32 / num_directions as f32) * 2.0 * std::f32::consts::PI;
             
-            // Check at different distances, but never too close to self
-            for d in [min_sense_distance, sense_distance * 0.5, sense_distance].iter() {
-                let check_x = self.position.x + angle.cos() * d;
-                let check_y = self.position.y + angle.sin() * d;
+            // Calculate an offset angle to avoid sampling in a perfect grid
+            let offset_angle = angle + self.direction.cos() * 0.1;
+            
+            // Check at different distances, using more sample points
+            for d in [min_sense_distance, sense_distance * 0.25, sense_distance * 0.5, sense_distance * 0.75, sense_distance].iter() {
+                let check_x = self.position.x + offset_angle.cos() * d;
+                let check_y = self.position.y + offset_angle.sin() * d;
                 
                 let strength = environment.pheromone_system_ref().get_pheromone(check_x, check_y, &pheromone_type);
                 
@@ -217,6 +235,14 @@ impl Ant {
             
             // Reverse direction to head back towards nest
             self.direction = (self.direction + std::f32::consts::PI) % (2.0 * std::f32::consts::PI);
+            
+            // Deposit a stronger initial pheromone to mark food discovery
+            environment.pheromone_system().add_pheromone(
+                self.position.x,
+                self.position.y,
+                PheromoneType::Food,
+                0.9 // Strong pheromone at food location
+            );
         }
         
         // Check if we're at the nest and carrying food
@@ -237,6 +263,14 @@ impl Ant {
                     break;
                 }
             }
+            
+            // Deposit a stronger pheromone at the nest
+            environment.pheromone_system().add_pheromone(
+                self.position.x,
+                self.position.y,
+                PheromoneType::Home,
+                0.9 // Strong pheromone at nest location
+            );
             
             // Reverse direction to head back out
             self.direction = (self.direction + std::f32::consts::PI) % (2.0 * std::f32::consts::PI);
