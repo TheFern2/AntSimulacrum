@@ -20,7 +20,7 @@ impl Ant {
         }
     }
     
-    pub fn update(&mut self, delta_time: f32, environment: &mut Environment) {
+    pub fn update(&mut self, delta_time: f32, _environment: &mut Environment) {
         // Will implement more sophisticated behavior later
         // For now, just basic wandering
         
@@ -55,15 +55,24 @@ impl Ant {
     }
     
     pub fn render(&self, window: &mut RenderWindow) {
-        let mut ant_shape = CircleShape::new(3.0, 3);
-        ant_shape.set_position(Vector2f::new(self.position.x - 3.0, self.position.y - 3.0));
+        // Create main body
+        let mut ant_body = CircleShape::new(5.0, 8);
+        ant_body.set_position(Vector2f::new(self.position.x - 5.0, self.position.y - 5.0));
         
         if self.carrying_food {
-            ant_shape.set_fill_color(Color::rgb(200, 200, 0)); // Yellow
+            ant_body.set_fill_color(Color::rgb(200, 200, 0)); // Yellow
         } else {
-            ant_shape.set_fill_color(Color::rgb(0, 0, 0)); // Black
+            ant_body.set_fill_color(Color::rgb(50, 50, 50)); // Dark grey
         }
         
-        window.draw(&ant_shape);
+        // Create head to show direction
+        let mut ant_head = CircleShape::new(3.0, 6);
+        let head_x = self.position.x + self.direction.cos() * 7.0;
+        let head_y = self.position.y + self.direction.sin() * 7.0;
+        ant_head.set_position(Vector2f::new(head_x - 3.0, head_y - 3.0));
+        ant_head.set_fill_color(Color::rgb(20, 20, 20)); // Black
+        
+        window.draw(&ant_body);
+        window.draw(&ant_head);
     }
 } 
