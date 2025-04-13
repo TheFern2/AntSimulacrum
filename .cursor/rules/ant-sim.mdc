@@ -1,0 +1,7 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+The project is in rust and uses sfml crate 0.24.0
+https://docs.rs/sfml/latest/sfml/

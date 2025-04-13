@@ -1,0 +1,157 @@
+use sfml::graphics::{RenderWindow, RenderTarget, Color};
+use sfml::window::{Style, Event, Key, mouse};
+use sfml::system::Vector2f;
+use sfml::cpp::FBox;
+
+use crate::environment::Environment;
+use crate::ui::UI;
+
+pub enum InteractionMode {
+    None,
+    AddWall,
+    AddFood,
+    RemoveObject,
+    AddAntNest,
+}
+
+pub struct Game {
+    window: FBox<RenderWindow>,
+    environment: Environment,
+    ui: UI,
+    interaction_mode: InteractionMode,
+    simulation_speed: f32,
+    paused: bool,
+    left_mouse_pressed: bool,
+}
+
+impl Game {
+    pub fn new(width: u32, height: u32, title: &str) -> Self {
+        let window = match RenderWindow::new(
+            (width, height),
+            title,
+            Style::CLOSE | Style::RESIZE,
+            &Default::default(),
+        ) {
+            Ok(window) => window,
+            Err(e) => panic!("Failed to create render window: {:?}", e),
+        };
+        
+        let environment = Environment::new(width, height);
+        let ui = UI::new(width, height);
+        
+        Self {
+            window,
+            environment,
+            ui,
+            interaction_mode: InteractionMode::None,
+            simulation_speed: 1.0,
+            paused: false,
+            left_mouse_pressed: false,
+        }
+    }
+    
+    pub fn run(&mut self) {
+        self.window.set_vertical_sync_enabled(true);
+        
+        while self.window.is_open() {
+            self.handle_events();
+            self.update();
+            self.render();
+        }
+    }
+    
+    fn handle_events(&mut self) {
+        while let Some(event) = self.window.poll_event() {
+            match event {
+                Event::Closed => self.window.close(),
+                Event::KeyPressed { code, .. } => self.handle_key_press(code),
+                Event::MouseButtonPressed { button, x, y } => {
+                    if button == mouse::Button::Left {
+                        self.left_mouse_pressed = true;
+                        self.handle_mouse_press(x, y);
+                    }
+                }
+                Event::MouseButtonReleased { button, .. } => {
+                    if button == mouse::Button::Left {
+                        self.left_mouse_pressed = false;
+                    }
+                }
+                Event::MouseMoved { x, y } => {
+                    self.handle_mouse_move(x, y);
+                }
+                _ => {}
+            }
+            
+            // Pass events to UI
+            self.ui.handle_event(&event);
+        }
+    }
+    
+    fn handle_key_press(&mut self, key: Key) {
+        match key {
+            Key::Space => self.paused = !self.paused,
+            Key::Add | Key::Equal => self.simulation_speed *= 1.2,
+            Key::Subtract | Key::Hyphen => self.simulation_speed *= 0.8,
+            Key::W => self.interaction_mode = InteractionMode::AddWall,
+            Key::F => self.interaction_mode = InteractionMode::AddFood,
+            Key::R => self.interaction_mode = InteractionMode::RemoveObject,
+            Key::N => self.interaction_mode = InteractionMode::AddAntNest,
+            Key::Escape => self.interaction_mode = InteractionMode::None,
+            _ => {}
+        }
+    }
+    
+    fn handle_mouse_press(&mut self, x: i32, y: i32) {
+        match self.interaction_mode {
+            InteractionMode::AddWall => {
+                self.environment.add_wall(x as f32, y as f32);
+            }
+            InteractionMode::AddFood => {
+                self.environment.add_food(x as f32, y as f32);
+            }
+            InteractionMode::RemoveObject => {
+                self.environment.remove_object(x as f32, y as f32);
+            }
+            InteractionMode::AddAntNest => {
+                self.environment.add_ant_nest(x as f32, y as f32);
+            }
+            _ => {}
+        }
+    }
+    
+    fn handle_mouse_move(&mut self, x: i32, y: i32) {
+        // Handle drag interactions
+        if self.left_mouse_pressed {
+            match self.interaction_mode {
+                InteractionMode::AddWall => {
+                    self.environment.add_wall(x as f32, y as f32);
+                }
+                InteractionMode::AddFood => {
+                    self.environment.add_food(x as f32, y as f32);
+                }
+                InteractionMode::RemoveObject => {
+                    self.environment.remove_object(x as f32, y as f32);
+                }
+                _ => {}
+            }
+        }
+    }
+    
+    fn update(&mut self) {
+        if !self.paused {
+            let delta_time = self.simulation_speed / 60.0; // Assuming 60 FPS
+            self.environment.update(delta_time);
+        }
+        
+        self.ui.update(&self.interaction_mode, self.simulation_speed, self.paused);
+    }
+    
+    fn render(&mut self) {
+        self.window.clear(Color::rgb(240, 230, 210)); // Light sandy color
+        
+        self.environment.render(&mut self.window);
+        self.ui.render(&mut self.window);
+        
+        self.window.display();
+    }
+} 
