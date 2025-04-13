@@ -62,6 +62,7 @@ impl UI {
         ui.create_button("Food", InteractionMode::AddFood, 2);
         ui.create_button("Remove", InteractionMode::RemoveObject, 3);
         ui.create_button("Nest", InteractionMode::AddAntNest, 4);
+        ui.create_button("Ant", InteractionMode::AddAnt, 5);
         
         ui
     }
@@ -130,6 +131,7 @@ impl UI {
             InteractionMode::AddFood => "Add Food",
             InteractionMode::RemoveObject => "Remove Objects",
             InteractionMode::AddAntNest => "Add Ant Nest",
+            InteractionMode::AddAnt => "Add Ant",
         };
         
         let status = format!(
@@ -165,5 +167,20 @@ impl UI {
         
         // Draw status text
         window.draw(&self.status_text);
+        
+        // Draw help text
+        let font_ref = unsafe { 
+            let raw_ptr = &**self.font as *const Font;
+            &*raw_ptr 
+        };
+        
+        let mut help_text = Text::new(
+            "Controls: [W]all | [F]ood | [A]nt | [N]est | [R]emove | [ESC]lear | [SPACE]Pause",
+            font_ref,
+            12
+        );
+        help_text.set_position(Vector2f::new(10.0, self.height as f32 - 50.0));
+        help_text.set_fill_color(Color::BLACK);
+        window.draw(&help_text);
     }
 } 

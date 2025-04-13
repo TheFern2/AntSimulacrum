@@ -14,6 +14,7 @@ pub enum InteractionMode {
     AddFood,
     RemoveObject,
     AddAntNest,
+    AddAnt,
 }
 
 pub struct Game {
@@ -109,6 +110,7 @@ impl Game {
             Key::F => self.interaction_mode = InteractionMode::AddFood,
             Key::R => self.interaction_mode = InteractionMode::RemoveObject,
             Key::N => self.interaction_mode = InteractionMode::AddAntNest,
+            Key::A => self.interaction_mode = InteractionMode::AddAnt,
             Key::Escape => self.interaction_mode = InteractionMode::None,
             _ => {}
         }
@@ -127,6 +129,9 @@ impl Game {
             }
             InteractionMode::AddAntNest => {
                 self.environment.add_ant_nest(x as f32, y as f32);
+            }
+            InteractionMode::AddAnt => {
+                self.test_ants.push(Ant::new(x as f32, y as f32));
             }
             _ => {}
         }
