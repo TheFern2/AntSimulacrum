@@ -116,19 +116,22 @@ impl Ant {
         
         // Boundary check - bounce off edges
         let margin = 10.0;
+        let env_width = environment.get_width() as f32;
+        let env_height = environment.get_height() as f32;
+        
         if self.position.x < margin {
             self.position.x = margin;
             self.direction = std::f32::consts::PI - self.direction;
-        } else if self.position.x > 800.0 - margin {
-            self.position.x = 800.0 - margin;
+        } else if self.position.x > env_width - margin {
+            self.position.x = env_width - margin;
             self.direction = std::f32::consts::PI - self.direction;
         }
         
         if self.position.y < margin {
             self.position.y = margin;
             self.direction = -self.direction;
-        } else if self.position.y > 600.0 - margin {
-            self.position.y = 600.0 - margin;
+        } else if self.position.y > env_height - margin {
+            self.position.y = env_height - margin;
             self.direction = -self.direction;
         }
     }

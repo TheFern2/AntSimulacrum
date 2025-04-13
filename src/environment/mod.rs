@@ -194,4 +194,47 @@ impl Environment {
     pub fn get_colonies(&mut self) -> &mut Vec<Colony> {
         &mut self.colonies
     }
+    
+    // Get the environment width
+    pub fn get_width(&self) -> u32 {
+        self.width
+    }
+    
+    // Get the environment height
+    pub fn get_height(&self) -> u32 {
+        self.height
+    }
+    
+    // Resize the environment's grid to match the new window size
+    pub fn resize(&mut self, new_width: u32, new_height: u32) {
+        let new_grid_width = (new_width as f32 / CELL_SIZE) as usize;
+        let new_grid_height = (new_height as f32 / CELL_SIZE) as usize;
+        
+        // If the new size is larger, expand the grid
+        if new_grid_width > self.grid_width || new_grid_height > self.grid_height {
+            let mut new_grid = vec![CellType::Empty; new_grid_width * new_grid_height];
+            
+            // Copy existing grid data to the new grid
+            for y in 0..self.grid_height {
+                for x in 0..self.grid_width {
+                    if x < new_grid_width && y < new_grid_height {
+                        new_grid[y * new_grid_width + x] = self.grid[y * self.grid_width + x];
+                    }
+                }
+            }
+            
+            self.grid = new_grid;
+            self.grid_width = new_grid_width;
+            self.grid_height = new_grid_height;
+        }
+        
+        // Update internal width and height
+        self.width = new_width;
+        self.height = new_height;
+        
+        // Resize the pheromone system
+        self.pheromone_system = PheromoneSystem::new(new_width, new_height, CELL_SIZE);
+        // Note: This will reset pheromones, but it's simpler than implementing
+        // a resize method for the pheromone system
+    }
 } 

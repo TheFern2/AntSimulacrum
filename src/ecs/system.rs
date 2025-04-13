@@ -137,16 +137,12 @@ impl<'a> System for RenderingSystem<'a> {
 
 /// System that handles ant behavior
 pub struct AntBehaviorSystem {
-    window_width: f32,
-    window_height: f32,
+    // We'll no longer store window dimensions directly, as we'll get them from environment
 }
 
 impl AntBehaviorSystem {
-    pub fn new(window_width: f32, window_height: f32) -> Self {
-        Self {
-            window_width,
-            window_height,
-        }
+    pub fn new() -> Self {
+        Self {}
     }
     
     // Calculate direction to target position
@@ -166,6 +162,14 @@ impl System for AntBehaviorSystem {
             super::component::ComponentType::Velocity,
         ]);
         
+        // Get environment dimensions for boundary checking
+        let (env_width, env_height) = if let Some(environment) = world.get_resource::<crate::environment::Environment>() {
+            (environment.get_width() as f32, environment.get_height() as f32)
+        } else {
+            // Fallback to some default dimensions if environment isn't available
+            (800.0, 600.0)
+        };
+
         for entity_id in entity_ids {
             // First, read the current state
             let position_opt = world.get_component::<super::component::PositionComponent>(
@@ -290,7 +294,7 @@ impl System for AntBehaviorSystem {
                 new_direction = PI - new_direction;
                 new_dx = new_direction.cos();
                 new_dy = new_direction.sin();
-            } else if position.x > self.window_width - margin {
+            } else if position.x > env_width - margin {
                 new_direction = PI - new_direction;
                 new_dx = new_direction.cos();
                 new_dy = new_direction.sin();
@@ -300,7 +304,7 @@ impl System for AntBehaviorSystem {
                 new_direction = -new_direction;
                 new_dx = new_direction.cos();
                 new_dy = new_direction.sin();
-            } else if position.y > self.window_height - margin {
+            } else if position.y > env_height - margin {
                 new_direction = -new_direction;
                 new_dx = new_direction.cos();
                 new_dy = new_direction.sin();
@@ -342,6 +346,30 @@ impl System for AntBehaviorSystem {
                     new_direction += (rand::random::<f32>() - 0.5) * 0.2;
                     
                     // Update movement vector
+                    new_dx = new_direction.cos();
+                    new_dy = new_direction.sin();
+                }
+                
+                // Update boundary checking with actual environment dimensions
+                let env_width = environment.get_width() as f32;
+                let env_height = environment.get_height() as f32;
+                
+                if position.x < margin {
+                    new_direction = PI - new_direction;
+                    new_dx = new_direction.cos();
+                    new_dy = new_direction.sin();
+                } else if position.x > env_width - margin {
+                    new_direction = PI - new_direction;
+                    new_dx = new_direction.cos();
+                    new_dy = new_direction.sin();
+                }
+                
+                if position.y < margin {
+                    new_direction = -new_direction;
+                    new_dx = new_direction.cos();
+                    new_dy = new_direction.sin();
+                } else if position.y > env_height - margin {
+                    new_direction = -new_direction;
                     new_dx = new_direction.cos();
                     new_dy = new_direction.sin();
                 }

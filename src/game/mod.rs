@@ -108,8 +108,8 @@ impl Game {
                     // Inform UI of the resize
                     self.ui.resize(width, height);
                     
-                    // We could also update environment grid if needed
-                    // For now we'll keep the original grid size
+                    // Update environment to handle the new window size
+                    self.environment.resize(width, height);
                 }
                 _ => {}
             }
