@@ -2,6 +2,7 @@ extern crate sfml;
 extern crate rand;
 extern crate serde;
 extern crate serde_json;
+extern crate simple_logger;
 
 mod ant;
 mod colony;
@@ -15,6 +16,16 @@ mod save;
 use game::Game;
 
 fn main() {
-    let mut game = Game::new(800, 600, "Ant Simulacrum");
+    // Initialize logger with timestamp and debug level
+    simple_logger::SimpleLogger::new()
+        .with_level(log::LevelFilter::Debug)
+        .with_utc_timestamps()
+        .init()
+        .unwrap();
+    
+    log::info!("Starting Ant Simulacrum");
+    
+    // Create a new game instance and run it
+    let mut game = Game::new(1200, 800, "Ant Simulacrum");
     game.run();
 }
