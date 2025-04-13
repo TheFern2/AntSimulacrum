@@ -2,6 +2,8 @@
 
 A 2D ant colony simulator built with Rust and SFML.
 
+![](docs/pics/Demo-041325.png)
+
 ## Description
 
 AntSimulacrum simulates the behavior of ants in a colony, implementing features like:
