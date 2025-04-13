@@ -4,12 +4,12 @@ use log::{debug, info, warn};
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use crate::environment::Environment;
+use crate::environment::{Environment, CellType};
 use crate::pheromone::PheromoneType;
 
 // Helper function to convert radians to degrees for easier reading in logs
 fn rad_to_deg(rad: f32) -> f32 {
-    rad * 180.0 / std::f32::consts::PI
+    (rad * 180.0 / std::f32::consts::PI).round()
 }
 
 // Position and timestamp history for detecting circular patterns
@@ -41,7 +41,7 @@ impl Ant {
     // How many position records to keep
     const POSITION_HISTORY_SIZE: usize = 20;
     // Distance threshold for considering a potential circle (grid cells)
-    const CIRCLE_DETECTION_THRESHOLD: f32 = 30.0;
+    const CIRCLE_DETECTION_THRESHOLD: f32 = 15.0;  // Further reduced from 20.0 to 15.0 to detect circles even sooner
     
     pub fn new(x: f32, y: f32) -> Self {
         // Get a unique ID using the atomic counter
@@ -71,6 +71,12 @@ impl Ant {
         self.ignore_pheromones_timer -= delta_time;
         self.lifetime += delta_time;
         self.last_position_record += delta_time;
+        
+        // Restore normal speed if we had reduced it to escape a circle
+        if self.ignore_pheromones_timer <= 2.0 && self.speed < 20.0 {
+            self.speed = 20.0;
+            debug!("Ant #{} restored normal speed", self.id);
+        }
         
         // Record position at regular intervals for ants carrying food
         if self.carrying_food && self.last_position_record >= Self::POSITION_RECORD_INTERVAL {
@@ -206,7 +212,7 @@ impl Ant {
         
         // Check for wall collisions
         let (grid_x, grid_y) = environment.screen_to_grid(next_x, next_y);
-        if environment.get_cell(grid_x, grid_y) == crate::environment::CellType::Wall {
+        if environment.get_cell(grid_x, grid_y) == CellType::Wall {
             // Hit a wall, bounce off in a realistic way
             
             // Check which direction we need to bounce (horizontal or vertical wall)
@@ -214,10 +220,10 @@ impl Ant {
             let (current_grid_x, current_grid_y) = environment.screen_to_grid(self.position.x, self.position.y);
             
             let horizontal_wall = current_grid_x != grid_x && 
-                                 environment.get_cell(grid_x, current_grid_y) == crate::environment::CellType::Wall;
+                                 environment.get_cell(grid_x, current_grid_y) == CellType::Wall;
             
             let vertical_wall = current_grid_y != grid_y && 
-                               environment.get_cell(current_grid_x, grid_y) == crate::environment::CellType::Wall;
+                               environment.get_cell(current_grid_x, grid_y) == CellType::Wall;
             
             if horizontal_wall {
                 // Bounce horizontally
@@ -287,7 +293,7 @@ impl Ant {
         
         // Check pheromones in multiple directions
         let num_directions = if self.carrying_food {
-            18  // More sampling directions for carrying ants to better find way home
+            8  // Further reduced from 10 to 8 to make behavior much less twitchy
         } else {
             12  // Standard number of directions for foraging
         };
@@ -303,7 +309,7 @@ impl Ant {
             // Only turn if the pheromone is roughly ahead of us (wider angle when carrying food)
             let forward_angle_limit = if self.carrying_food {
                 // Allow wider angle consideration when carrying food (nearly all directions)
-                std::f32::consts::PI * 0.9  
+                std::f32::consts::PI * 0.6  // Further reduced from 0.7 to 0.6 to be even more forward-focused
             } else {
                 // More restricted angle when searching for food
                 std::f32::consts::PI * 2.0/3.0
@@ -311,9 +317,9 @@ impl Ant {
             
             if angle_diff.abs() < forward_angle_limit {
                 // Gradually turn towards the best direction
-                // Increased turn rate for carrying ants to make return more effective
+                // Reduced turn rate for carrying ants to make movement more stable
                 let turn_rate = if self.carrying_food {
-                    0.8  // Turn more aggressively when carrying food
+                    0.15  // Further reduced from 0.2 to 0.15 to make turns extremely gradual
                 } else {
                     0.7  // Standard turn rate for foraging
                 };
@@ -345,14 +351,24 @@ impl Ant {
             }
             
             // Add a small random variation to prevent perfect following that might lead to circles
-            self.direction += (rand::random::<f32>() - 0.5) * 0.2;
+            // Use smaller variation for carrying ants to prevent erratic movement
+            let random_variation = if self.carrying_food {
+                (rand::random::<f32>() - 0.5) * 0.03  // Further reduced from 0.05 to 0.03
+            } else {
+                (rand::random::<f32>() - 0.5) * 0.2  // Standard random variation
+            };
+            self.direction += random_variation;
         } else {
             // If no pheromone found, increase random movement slightly
             // Higher chance of direction change when carrying food to escape local minima
-            let random_chance = if self.carrying_food { 0.5 } else { 0.4 };
+            let random_chance = if self.carrying_food { 0.7 } else { 0.4 };  // Increased from 0.6 to 0.7
             if rand::random::<f32>() < random_chance {
                 let old_direction = self.direction;
-                let dir_change = (rand::random::<f32>() - 0.5) * std::f32::consts::PI * 0.5;
+                let dir_change = if self.carrying_food {
+                    (rand::random::<f32>() - 0.5) * std::f32::consts::PI * 0.6  // Increased from 0.5 to 0.6
+                } else {
+                    (rand::random::<f32>() - 0.5) * std::f32::consts::PI * 0.5
+                };
                 self.direction += dir_change;
                 
                 if self.carrying_food {
@@ -379,7 +395,7 @@ impl Ant {
         
         // Lower threshold for Home pheromones when carrying food, to make it easier to find way home
         let best_strength = if self.carrying_food && pheromone_type == PheromoneType::Home {
-            0.02 // Very low threshold for detecting home pheromones when carrying food
+            0.005 // Further reduced from 0.01 to 0.005 to detect even weaker home trails
         } else {
             0.05 // Standard threshold for other situations
         };
@@ -390,10 +406,8 @@ impl Ant {
         // Define arrays outside the loop to avoid temporary value errors
         let carrying_points = [
             min_sense_distance, 
-            sense_distance * 0.2, 
-            sense_distance * 0.4, 
-            sense_distance * 0.6, 
-            sense_distance * 0.8, 
+            sense_distance * 0.4,  // Reduced from 0.5 to 0.4
+            sense_distance * 0.7,  // Added middle distance point
             sense_distance
         ];
         
@@ -416,9 +430,9 @@ impl Ant {
             // For carrying ants, bias sampling toward forward angles
             // This makes them less likely to backtrack
             let biased_angle = if self.carrying_food {
-                // Concentrate sampling in the forward 270 degrees (avoiding going backward)
-                // Map i from [0..num_directions] to [-3PI/4..3PI/4]
-                (i as f32 / num_directions as f32 - 0.5) * 1.5 * std::f32::consts::PI
+                // Concentrate sampling in the forward 180 degrees (avoiding going backward)
+                // Map i from [0..num_directions] to [-PI/2..PI/2]
+                (i as f32 / num_directions as f32 - 0.5) * std::f32::consts::PI
             } else {
                 angle
             };
@@ -429,7 +443,7 @@ impl Ant {
             // If carrying food, don't check directions that would make the ant turn back
             if self.carrying_food {
                 let angle_diff = (world_angle - self.direction).abs() % (2.0 * std::f32::consts::PI);
-                let back_angle = std::f32::consts::PI * 0.7; // Don't look more than 126 degrees back
+                let back_angle = std::f32::consts::PI * 0.5; // Further reduced from 0.6 to 0.5 to focus even more forward
                 
                 if angle_diff > back_angle && angle_diff < (2.0 * std::f32::consts::PI - back_angle) {
                     continue; // Skip this direction - it would make the ant turn back too much
@@ -462,7 +476,7 @@ impl Ant {
                     // Calculate how "forward" this direction is (1.0 = directly forward, 0.0 = directly backward)
                     let forward_factor = ((world_angle - self.direction + std::f32::consts::PI).abs() 
                                         % (2.0 * std::f32::consts::PI) - std::f32::consts::PI).abs() / std::f32::consts::PI;
-                    forward_factor * 0.1 // Add up to 0.1 bonus for forward directions
+                    forward_factor * 0.03 // Further reduced from 0.05 to 0.03
                 } else {
                     0.0
                 };
@@ -520,13 +534,13 @@ impl Ant {
         let (grid_x, grid_y) = environment.screen_to_grid(self.position.x, self.position.y);
         
         // Check if we're at a food source and not carrying food
-        if !self.carrying_food && environment.get_cell(grid_x, grid_y) == crate::environment::CellType::Food {
+        if !self.carrying_food && environment.get_cell(grid_x, grid_y) == CellType::Food {
             // Take some food
             self.carrying_food = true;
             
             // Set a timer to temporarily ignore pheromones after finding food
             // This will help prevent ants from getting stuck in circles
-            self.ignore_pheromones_timer = 3.0; // Ignore pheromones for 3 seconds
+            self.ignore_pheromones_timer = 10.0; // Increased from 8.0 to 10.0 seconds
             
             // Don't deposit any pheromones at the food location
             // This prevents creating any kind of attraction point
@@ -562,11 +576,21 @@ impl Ant {
         }
         
         // Check if we're at the nest and carrying food
-        else if self.carrying_food && environment.get_cell(grid_x, grid_y) == crate::environment::CellType::AntNest {
+        else if self.carrying_food && environment.get_cell(grid_x, grid_y) == CellType::AntNest {
             // Deposit food
             self.carrying_food = false;
             
+            println!("DEBUG: Ant #{} attempting to deposit food at nest at ({},{}) pos=({:.1},{:.1})", 
+                self.id, grid_x, grid_y, self.position.x, self.position.y);
+            
+            // Get the center of the current nest cell
+            let _nest_center_x = (grid_x as f32 + 0.5) * 10.0; // Assuming cell size is 10.0
+            let _nest_center_y = (grid_y as f32 + 0.5) * 10.0;
+            
             // Signal the colony to add food
+            let mut delivered = false;
+            println!("DEBUG: Number of colonies: {}", environment.get_colonies().len());
+            
             for colony in environment.get_colonies().iter_mut() {
                 // Check if we're at this colony's position
                 let colony_pos = colony.get_position();
@@ -574,13 +598,58 @@ impl Ant {
                 let dy = self.position.y - colony_pos.y;
                 let distance_squared = dx * dx + dy * dy;
                 
-                if distance_squared < 30.0 * 30.0 {  // If within 30 pixels of colony
+                println!("DEBUG: Ant #{} checking colony at ({:.1},{:.1}), distance_squared={:.1}, checking radius={:.1}", 
+                    self.id, colony_pos.x, colony_pos.y, distance_squared, 35.0 * 35.0);
+                
+                if distance_squared < 35.0 * 35.0 {  // If within 35 pixels of colony
                     colony.add_food(1.0);  // Add 1 unit of food
+                    delivered = true;
                     info!(
                         "Ant #{} DELIVERED FOOD to nest at ({},{}) pos=({:.1},{:.1})",
                         self.id, grid_x, grid_y, self.position.x, self.position.y
                     );
                     break;
+                }
+            }
+            
+            if !delivered {
+                println!("DEBUG: WARNING - Ant #{} at nest but couldn't find nearby colony to deliver food!", self.id);
+                
+                // Try again with relaxed distance check
+                let mut closest_colony = None;
+                let mut closest_distance = f32::MAX;
+                
+                for (i, colony) in environment.get_colonies().iter_mut().enumerate() {
+                    let colony_pos = colony.get_position();
+                    let dx = self.position.x - colony_pos.x;
+                    let dy = self.position.y - colony_pos.y;
+                    let distance_squared = dx * dx + dy * dy;
+                    
+                    if distance_squared < closest_distance {
+                        closest_distance = distance_squared;
+                        closest_colony = Some((i, colony));
+                    }
+                }
+                
+                // Use the closest colony if one exists
+                if let Some((i, colony)) = closest_colony {
+                    colony.add_food(1.0);
+                    println!("DEBUG: Ant #{} delivered to closest colony #{} at distance {:.1}", 
+                        self.id, i, closest_distance.sqrt());
+                    info!(
+                        "Ant #{} DELIVERED FOOD to closest colony #{} at ({},{}) pos=({:.1},{:.1})",
+                        self.id, i, grid_x, grid_y, self.position.x, self.position.y
+                    );
+                    delivered = true;
+                } else if let Some(colony) = environment.get_colonies().first_mut() {
+                    // Fall back to the first colony as last resort
+                    colony.add_food(1.0);
+                    info!(
+                        "Ant #{} DELIVERED FOOD to default colony! nest=({},{}) pos=({:.1},{:.1}) colony_pos=({:.1},{:.1})",
+                        self.id, grid_x, grid_y, self.position.x, self.position.y, 
+                        colony.get_position().x, colony.get_position().y
+                    );
+                    delivered = true;
                 }
             }
             
@@ -721,30 +790,62 @@ impl Ant {
                         distance
                     );
                     
-                    // If ant is circling for too long, force it to go directly home and ignore pheromones
-                    if circle_time > 5.0 && self.carrying_food {
+                    // If ant is circling for too long, force it to escape
+                    if circle_time > 3.0 {  // Further reduced from 4.0 to 3.0 to break out of circles even sooner
                         // Clear position history to avoid multiple detections
                         self.position_history.clear();
-                        
-                        // Force the ant to ignore pheromones for a while
-                        self.ignore_pheromones_timer = 5.0;
-                        
-                        // Calculate direction to home
-                        let dx = self.position.x - self.home_position.x;
-                        let dy = self.position.y - self.home_position.y;
-                        let angle_to_home = dy.atan2(dx);
-                        
-                        // Set direction home with some randomness
-                        let old_direction = self.direction;
-                        self.direction = (angle_to_home + std::f32::consts::PI) % (2.0 * std::f32::consts::PI);
-                        self.direction += (rand::random::<f32>() - 0.5) * 0.3;
-                        
-                        warn!(
-                            "CIRCLE ESCAPE: Ant #{} - changing direction from {:.0}° to {:.0}° to go HOME",
-                            self.id,
-                            rad_to_deg(old_direction),
-                            rad_to_deg(self.direction)
-                        );
+
+                        if self.carrying_food {
+                            // Force the ant to ignore pheromones for a while
+                            self.ignore_pheromones_timer = 15.0;  // Increased from 12.0 to 15.0
+                            
+                            // Temporarily reduce speed to break out of circles
+                            self.speed = 8.0; // Further reduced from 10.0 to 8.0
+                            
+                            // Calculate direction to home
+                            let dx = self.position.x - self.home_position.x;
+                            let dy = self.position.y - self.home_position.y;
+                            let angle_to_home = dy.atan2(dx);
+                            
+                            // Set direction home with some randomness
+                            let old_direction = self.direction;
+                            self.direction = (angle_to_home + std::f32::consts::PI) % (2.0 * std::f32::consts::PI);
+                            
+                            // Add larger random variation to escape the circle pattern
+                            self.direction += (rand::random::<f32>() - 0.5) * 0.8; // Increased from 0.6 to 0.8
+                            
+                            // Move a bit in the new direction immediately to escape the circle
+                            let escape_step = 15.0; // Increased from 10.0 to 15.0
+                            self.position.x += self.direction.cos() * escape_step;
+                            self.position.y += self.direction.sin() * escape_step;
+                            
+                            warn!(
+                                "CIRCLE ESCAPE (HOME): Ant #{} - changing direction from {:.0}° to {:.0}° and reducing speed to {:.1}",
+                                self.id,
+                                rad_to_deg(old_direction),
+                                rad_to_deg(self.direction),
+                                self.speed
+                            );
+                            
+                            // Schedule speed restoration after some time (using a timer system)
+                            // We'll restore speed after 5 seconds of the ignore_pheromones_timer
+                            // We don't need a new timer as we can use the existing ignore_pheromones_timer
+                        } else {
+                            // If not carrying food, perform a large random turn and ignore pheromones
+                            self.ignore_pheromones_timer = 7.0; // Increased from 5.0 to 7.0
+
+                            let old_direction = self.direction;
+                            // Add a random turn up to +/- 90 degrees (PI radians)
+                            self.direction += (rand::random::<f32>() - 0.5) * std::f32::consts::PI; 
+                            self.direction = (self.direction + 2.0 * std::f32::consts::PI) % (2.0 * std::f32::consts::PI); // Ensure positive angle
+
+                            warn!(
+                                "CIRCLE ESCAPE (SEARCHING): Ant #{} - changing direction from {:.0}° to {:.0}°",
+                                self.id,
+                                rad_to_deg(old_direction),
+                                rad_to_deg(self.direction)
+                            );
+                        }
                         
                         return; // Exit after finding one circle
                     }

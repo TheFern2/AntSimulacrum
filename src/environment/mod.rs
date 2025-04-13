@@ -138,10 +138,17 @@ impl Environment {
                 }
             }
             
-            // Create a new colony at this location
+            // Calculate the center position of the nest in screen coordinates
             let colony_x = (grid_x as f32 + 0.5) * CELL_SIZE;
             let colony_y = (grid_y as f32 + 0.5) * CELL_SIZE;
-            self.colonies.push(Colony::new(colony_x, colony_y));
+            
+            println!("DEBUG: Creating new colony at screen=({:.1},{:.1}), grid=({},{}), colony_pos=({:.1},{:.1})", 
+                x, y, grid_x, grid_y, colony_x, colony_y);
+                
+            // Create a new colony at this location with the correct radius matching the ant food delivery distance check
+            let colony_position = Vector2f::new(colony_x, colony_y);
+            let colony_radius = 30.0; // Match the distance check in the ant delivery code
+            self.colonies.push(Colony::new(colony_position, colony_radius));
         }
     }
     

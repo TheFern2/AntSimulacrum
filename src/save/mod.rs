@@ -72,6 +72,7 @@ pub struct SavedColony {
     ants: Vec<SavedAnt>,
     food_stored: f32,
     max_ants: usize,
+    food_deliveries: u32,
 }
 
 impl SavedColony {
@@ -85,11 +86,12 @@ impl SavedColony {
             ants,
             food_stored: colony.get_food_stored(),
             max_ants: colony.get_max_ants(),
+            food_deliveries: colony.get_food_deliveries(),
         }
     }
     
     pub fn to_colony(&self) -> Colony {
-        let mut colony = Colony::new(self.position.x, self.position.y);
+        let mut colony = Colony::new(Vector2f::new(self.position.x, self.position.y), 30.0);
         
         // Remove default ants and replace with saved ants
         colony.clear_ants();
@@ -100,6 +102,7 @@ impl SavedColony {
         
         colony.set_food_stored(self.food_stored);
         colony.set_max_ants(self.max_ants);
+        colony.set_food_deliveries(self.food_deliveries);
         
         colony
     }

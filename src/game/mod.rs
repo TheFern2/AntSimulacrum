@@ -206,7 +206,7 @@ impl Game {
             }
         }
         
-        self.ui.update(&self.interaction_mode, self.simulation_speed, self.paused);
+        self.ui.update(&self.interaction_mode, self.simulation_speed, self.paused, &self.environment);
     }
     
     fn render(&mut self) {

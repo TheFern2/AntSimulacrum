@@ -4,6 +4,7 @@ use sfml::window::{Event, mouse};
 use sfml::cpp::FBox;
 
 use crate::game::InteractionMode;
+use crate::environment::Environment;
 
 // UI layout constants
 const STATUS_BAR_HEIGHT: f32 = 30.0;
@@ -13,6 +14,7 @@ pub struct UI {
     height: u32,
     status_text: Text<'static>,
     control_text: Text<'static>,
+    food_delivery_text: Text<'static>,
     font: Box<FBox<Font>>,
     current_mode: InteractionMode,
 }
@@ -48,11 +50,17 @@ impl UI {
         control_text.set_position(Vector2f::new(width as f32 - control_text.global_bounds().width - 10.0, height as f32 - STATUS_BAR_HEIGHT + 5.0));
         control_text.set_fill_color(Color::BLACK);
         
+        // Create food delivery counter text
+        let mut food_delivery_text = Text::new("Food Deliveries: 0", font_ref, 16);
+        food_delivery_text.set_position(Vector2f::new(10.0, 10.0));
+        food_delivery_text.set_fill_color(Color::rgb(200, 100, 0)); // Orange
+        
         Self {
             width,
             height,
             status_text,
             control_text,
+            food_delivery_text,
             font,
             current_mode: InteractionMode::None,
         }
@@ -62,7 +70,7 @@ impl UI {
         // No UI elements to interact with now
     }
     
-    pub fn update(&mut self, interaction_mode: &InteractionMode, simulation_speed: f32, paused: bool) {
+    pub fn update(&mut self, interaction_mode: &InteractionMode, simulation_speed: f32, paused: bool, environment: &Environment) {
         // Save current mode for rendering
         self.current_mode = interaction_mode.clone();
         
@@ -74,6 +82,20 @@ impl UI {
             if paused { "PAUSED" } else { "Running" }
         );
         self.status_text.set_string(&status);
+        
+        // Update food delivery counter
+        let total_deliveries: u32 = environment.get_all_colonies().iter()
+            .map(|colony| colony.get_food_deliveries())
+            .sum();
+        
+        println!("DEBUG: UI updating food counter - Total deliveries: {}", total_deliveries);
+        
+        // Log each colony's individual count
+        for (i, colony) in environment.get_all_colonies().iter().enumerate() {
+            println!("DEBUG: Colony #{} has {} food deliveries", i, colony.get_food_deliveries());
+        }
+        
+        self.food_delivery_text.set_string(&format!("Food Deliveries: {}", total_deliveries));
     }
     
     pub fn resize(&mut self, width: u32, height: u32) {
@@ -83,6 +105,8 @@ impl UI {
         // Update positions of UI elements
         self.status_text.set_position(Vector2f::new(10.0, height as f32 - STATUS_BAR_HEIGHT + 5.0));
         self.control_text.set_position(Vector2f::new(width as f32 - self.control_text.global_bounds().width - 10.0, height as f32 - STATUS_BAR_HEIGHT + 5.0));
+        // Food counter stays at the top-left corner
+        self.food_delivery_text.set_position(Vector2f::new(10.0, 10.0));
     }
     
     pub fn render(&mut self, window: &mut RenderWindow) {
@@ -95,6 +119,9 @@ impl UI {
         
         // Draw status text
         window.draw(&self.status_text);
+        
+        // Draw food delivery counter
+        window.draw(&self.food_delivery_text);
         
         // Get a font reference to create the text elements
         let font_ref = unsafe { 
