@@ -7,6 +7,7 @@ mod environment;
 mod game;
 mod pheromone;
 mod ui;
+mod ecs;
 
 use game::Game;
 
