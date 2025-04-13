@@ -62,4 +62,8 @@ impl Colony {
     pub fn get_statistics(&self) -> (usize, f32, usize) {
         (self.ants.len(), self.food_stored, self.max_ants)
     }
+    
+    pub fn get_position(&self) -> Vector2f {
+        self.position
+    }
 } 

@@ -16,6 +16,9 @@ pub struct World {
     
     // Systems for updating the world
     systems: Vec<Box<dyn System>>,
+    
+    // Resources - global data accessible to systems
+    resources: HashMap<std::any::TypeId, Box<dyn std::any::Any>>,
 }
 
 impl World {
@@ -26,7 +29,28 @@ impl World {
             next_entity_id: 0,
             components: HashMap::new(),
             systems: Vec::new(),
+            resources: HashMap::new(),
         }
+    }
+    
+    /// Add a resource to the world
+    pub fn add_resource<T: 'static>(&mut self, resource: T) {
+        let type_id = std::any::TypeId::of::<T>();
+        self.resources.insert(type_id, Box::new(resource));
+    }
+    
+    /// Get a reference to a resource
+    pub fn get_resource<T: 'static>(&self) -> Option<&T> {
+        let type_id = std::any::TypeId::of::<T>();
+        self.resources.get(&type_id)
+            .and_then(|boxed| boxed.downcast_ref::<T>())
+    }
+    
+    /// Get a mutable reference to a resource
+    pub fn get_resource_mut<T: 'static>(&mut self) -> Option<&mut T> {
+        let type_id = std::any::TypeId::of::<T>();
+        self.resources.get_mut(&type_id)
+            .and_then(|boxed| boxed.downcast_mut::<T>())
     }
     
     /// Create a new entity and return its ID

@@ -153,7 +153,7 @@ impl Environment {
     }
     
     // Convert screen coordinates to grid coordinates
-    fn screen_to_grid(&self, x: f32, y: f32) -> (usize, usize) {
+    pub fn screen_to_grid(&self, x: f32, y: f32) -> (usize, usize) {
         let grid_x = (x / CELL_SIZE) as usize;
         let grid_y = (y / CELL_SIZE) as usize;
         (grid_x, grid_y)
@@ -180,8 +180,18 @@ impl Environment {
         x < self.grid_width && y < self.grid_height
     }
     
-    // Get the pheromone system
+    // Get the pheromone system with mutable reference
     pub fn pheromone_system(&mut self) -> &mut PheromoneSystem {
         &mut self.pheromone_system
+    }
+    
+    // Get the pheromone system with immutable reference
+    pub fn pheromone_system_ref(&self) -> &PheromoneSystem {
+        &self.pheromone_system
+    }
+    
+    // Get mutable reference to colonies
+    pub fn get_colonies(&mut self) -> &mut Vec<Colony> {
+        &mut self.colonies
     }
 } 

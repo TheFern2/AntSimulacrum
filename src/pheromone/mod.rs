@@ -60,14 +60,14 @@ impl PheromoneSystem {
     
     pub fn update(&mut self, delta_time: f32) {
         // Evaporate pheromones
-        let evaporation_rate = 0.05 * delta_time;
+        let evaporation_rate = 0.04 * delta_time;
         
         let mut to_remove = Vec::new();
         
         for (key, strength) in self.pheromones.iter_mut() {
             *strength -= evaporation_rate;
             
-            if *strength <= 0.01 {
+            if *strength <= 0.003 {
                 to_remove.push(*key);
             }
         }
@@ -86,7 +86,7 @@ impl PheromoneSystem {
             let mut pheromone = CircleShape::new(self.grid_size / 2.0, 8);
             pheromone.set_position(Vector2f::new(x, y));
             
-            let alpha = (*strength * 100.0) as u8;
+            let alpha = (*strength * 200.0).min(255.0) as u8;
             
             match pheromone_type {
                 PheromoneType::Food => {

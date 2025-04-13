@@ -306,6 +306,47 @@ impl System for AntBehaviorSystem {
                 new_dy = new_direction.sin();
             }
             
+            // Check for wall collisions - this requires access to the environment
+            // In a full implementation, we would either:
+            // 1. Have an environment component that can be queried
+            // 2. Pass the environment as a parameter to the system
+            if let Some(environment) = world.get_resource::<crate::environment::Environment>() {
+                // Calculate next position
+                let next_x = position.x + new_dx * delta_time * 50.0; // Assuming speed is 50.0
+                let next_y = position.y + new_dy * delta_time * 50.0;
+                
+                // Check if next position would hit a wall
+                let (grid_x, grid_y) = environment.screen_to_grid(next_x, next_y);
+                if environment.get_cell(grid_x, grid_y) == crate::environment::CellType::Wall {
+                    // Determine wall orientation by checking adjacent cells
+                    let (current_grid_x, current_grid_y) = environment.screen_to_grid(position.x, position.y);
+                    
+                    let horizontal_wall = current_grid_x != grid_x && 
+                                         environment.get_cell(grid_x, current_grid_y) == crate::environment::CellType::Wall;
+                    
+                    let vertical_wall = current_grid_y != grid_y && 
+                                       environment.get_cell(current_grid_x, grid_y) == crate::environment::CellType::Wall;
+                    
+                    if horizontal_wall {
+                        // Bounce horizontally (like a side wall)
+                        new_direction = PI - new_direction;
+                    } else if vertical_wall {
+                        // Bounce vertically (like a floor/ceiling)
+                        new_direction = -new_direction;
+                    } else {
+                        // Corner collision or diagonal approach, reverse direction
+                        new_direction = (new_direction + PI) % (2.0 * PI);
+                    }
+                    
+                    // Add small random variation to prevent getting stuck
+                    new_direction += (rand::random::<f32>() - 0.5) * 0.2;
+                    
+                    // Update movement vector
+                    new_dx = new_direction.cos();
+                    new_dy = new_direction.sin();
+                }
+            }
+            
             // Now apply all the state changes
             if let Some(velocity) = world.get_component_mut::<super::component::VelocityComponent>(
                 entity_id,
