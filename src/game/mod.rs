@@ -2,13 +2,15 @@ use sfml::graphics::{RenderWindow, RenderTarget, Color};
 use sfml::window::{Style, Event, Key, mouse};
 use sfml::system::Vector2f;
 use sfml::cpp::FBox;
+use std::path::Path;
 
 use crate::environment::Environment;
 use crate::ui::UI;
 use crate::ant::Ant;
+use crate::save;
 use rand::random;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum InteractionMode {
     None,
     AddWall,
@@ -27,6 +29,7 @@ pub struct Game {
     paused: bool,
     left_mouse_pressed: bool,
     test_ants: Vec<Ant>, // Just for testing, will move to ECS later
+    save_path: String,
 }
 
 impl Game {
@@ -62,6 +65,7 @@ impl Game {
             paused: false,
             left_mouse_pressed: false,
             test_ants,
+            save_path: "ant_simulation_save.json".to_string(),
         }
     }
     
@@ -130,6 +134,22 @@ impl Game {
             Key::N => self.interaction_mode = InteractionMode::AddAntNest,
             Key::A => self.interaction_mode = InteractionMode::AddAnt,
             Key::Escape => self.interaction_mode = InteractionMode::None,
+            Key::S => {
+                // Save the game state
+                if let Err(e) = self.save_game() {
+                    println!("Error saving game: {}", e);
+                } else {
+                    println!("Game saved successfully to {}", self.save_path);
+                }
+            },
+            Key::L => {
+                // Load the game state
+                if let Err(e) = self.load_game() {
+                    println!("Error loading game: {}", e);
+                } else {
+                    println!("Game loaded successfully from {}", self.save_path);
+                }
+            },
             _ => {}
         }
     }
@@ -202,5 +222,62 @@ impl Game {
         self.ui.render(&mut self.window);
         
         self.window.display();
+    }
+    
+    // Save the current game state
+    pub fn save_game(&self) -> std::io::Result<()> {
+        save::save_game_state(Path::new(&self.save_path), self)
+    }
+    
+    // Load a game state
+    pub fn load_game(&mut self) -> std::io::Result<()> {
+        let saved_game = save::load_game_state(Path::new(&self.save_path))?;
+        
+        // Load environment
+        self.environment = saved_game.environment.to_environment();
+        
+        // Load test ants
+        self.test_ants.clear();
+        for saved_ant in saved_game.test_ants {
+            self.test_ants.push(saved_ant.to_ant());
+        }
+        
+        // Parse interaction mode from string
+        match saved_game.interaction_mode.as_str() {
+            "None" => self.interaction_mode = InteractionMode::None,
+            "AddWall" => self.interaction_mode = InteractionMode::AddWall,
+            "AddFood" => self.interaction_mode = InteractionMode::AddFood,
+            "RemoveObject" => self.interaction_mode = InteractionMode::RemoveObject,
+            "AddAntNest" => self.interaction_mode = InteractionMode::AddAntNest,
+            "AddAnt" => self.interaction_mode = InteractionMode::AddAnt,
+            _ => self.interaction_mode = InteractionMode::None,
+        }
+        
+        // Load other game settings
+        self.simulation_speed = saved_game.simulation_speed;
+        self.paused = saved_game.paused;
+        
+        Ok(())
+    }
+    
+    // Accessor methods for save/load functionality
+    pub fn get_environment(&self) -> &Environment {
+        &self.environment
+    }
+    
+    pub fn get_interaction_mode(&self) -> &InteractionMode {
+        &self.interaction_mode
+    }
+    
+    pub fn get_simulation_speed(&self) -> f32 {
+        self.simulation_speed
+    }
+    
+    pub fn is_paused(&self) -> bool {
+        self.paused
+    }
+    
+    pub fn get_test_ants(&self) -> &Vec<Ant> {
+        &self.test_ants
     }
 } 

@@ -1,6 +1,7 @@
 use sfml::graphics::{RenderWindow, RenderTarget, RectangleShape, CircleShape, Color, Transformable, Shape};
 use sfml::system::Vector2f;
 use std::collections::HashMap;
+use serde::{Serialize, Deserialize};
 
 use crate::pheromone::PheromoneSystem;
 use crate::colony::Colony;
@@ -9,7 +10,7 @@ use crate::ant::Ant;
 // Cell size in pixels
 const CELL_SIZE: f32 = 10.0;
 
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
 pub enum CellType {
     Empty,
     Wall,
@@ -236,5 +237,43 @@ impl Environment {
         self.pheromone_system = PheromoneSystem::new(new_width, new_height, CELL_SIZE);
         // Note: This will reset pheromones, but it's simpler than implementing
         // a resize method for the pheromone system
+    }
+    
+    pub fn get_grid_width(&self) -> usize {
+        self.grid_width
+    }
+    
+    pub fn get_grid_height(&self) -> usize {
+        self.grid_height
+    }
+    
+    pub fn get_grid(&self) -> &Vec<CellType> {
+        &self.grid
+    }
+    
+    pub fn set_grid(&mut self, grid: Vec<CellType>, width: usize, height: usize) {
+        self.grid = grid;
+        self.grid_width = width;
+        self.grid_height = height;
+    }
+    
+    pub fn get_food_amounts(&self) -> &HashMap<(usize, usize), f32> {
+        &self.food_amounts
+    }
+    
+    pub fn set_food_amounts(&mut self, food_amounts: HashMap<(usize, usize), f32>) {
+        self.food_amounts = food_amounts;
+    }
+    
+    pub fn get_all_colonies(&self) -> &Vec<Colony> {
+        &self.colonies
+    }
+    
+    pub fn clear_colonies(&mut self) {
+        self.colonies.clear();
+    }
+    
+    pub fn add_colony(&mut self, colony: Colony) {
+        self.colonies.push(colony);
     }
 } 

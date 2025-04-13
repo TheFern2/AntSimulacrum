@@ -1,8 +1,9 @@
 use sfml::graphics::{RenderWindow, RenderTarget, CircleShape, Color, Transformable, BlendMode, RenderStates, Shape};
 use sfml::system::Vector2f;
 use std::collections::HashMap;
+use serde::{Serialize, Deserialize};
 
-#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Serialize, Deserialize)]
 pub enum PheromoneType {
     Food,
     Home,
@@ -59,20 +60,26 @@ impl PheromoneSystem {
     }
     
     pub fn update(&mut self, delta_time: f32) {
-        // Evaporate pheromones
-        let evaporation_rate = 0.04 * delta_time;
+        // Evaporation rate controls how quickly pheromones fade
+        // Current rate: 0.04 * delta_time (4% per second if delta_time is in seconds)
+        // Increase this value for faster evaporation, decrease for longer-lasting pheromones
+        let evaporation_rate = 0.02 * delta_time;
         
         let mut to_remove = Vec::new();
         
         for (key, strength) in self.pheromones.iter_mut() {
+            // Reduce strength of each pheromone by the evaporation rate
             *strength -= evaporation_rate;
             
+            // Threshold for removing weak pheromones (currently 0.003)
+            // Increase this value to remove pheromones more aggressively
+            // Decrease to allow weaker pheromones to persist longer
             if *strength <= 0.003 {
                 to_remove.push(*key);
             }
         }
         
-        // Remove weak pheromones
+        // Remove all pheromones that fell below the threshold
         for key in to_remove {
             self.pheromones.remove(&key);
         }
@@ -101,5 +108,22 @@ impl PheromoneSystem {
             states.blend_mode = BlendMode::ADD;
             window.draw_with_renderstates(&pheromone, &states);
         }
+    }
+    
+    pub fn get_all_pheromones(&self) -> &HashMap<(usize, usize, PheromoneType), f32> {
+        &self.pheromones
+    }
+    
+    pub fn add_pheromone_at_grid(&mut self, grid_x: usize, grid_y: usize, pheromone_type: PheromoneType, strength: f32) {
+        if grid_x >= self.width || grid_y >= self.height {
+            return;
+        }
+        
+        let key = (grid_x, grid_y, pheromone_type);
+        let current_strength = self.pheromones.get(&key).unwrap_or(&0.0);
+        
+        // Pheromones add up to a maximum
+        let new_strength = (current_strength + strength).min(1.0);
+        self.pheromones.insert(key, new_strength);
     }
 } 

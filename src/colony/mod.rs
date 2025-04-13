@@ -66,4 +66,32 @@ impl Colony {
     pub fn get_position(&self) -> Vector2f {
         self.position
     }
+    
+    pub fn get_ants(&self) -> &Vec<Ant> {
+        &self.ants
+    }
+    
+    pub fn get_food_stored(&self) -> f32 {
+        self.food_stored
+    }
+    
+    pub fn set_food_stored(&mut self, food_stored: f32) {
+        self.food_stored = food_stored;
+    }
+    
+    pub fn get_max_ants(&self) -> usize {
+        self.max_ants
+    }
+    
+    pub fn set_max_ants(&mut self, max_ants: usize) {
+        self.max_ants = max_ants;
+    }
+    
+    pub fn clear_ants(&mut self) {
+        self.ants.clear();
+    }
+    
+    pub fn add_ant(&mut self, ant: Ant) {
+        self.ants.push(ant);
+    }
 } 

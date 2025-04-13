@@ -1,5 +1,7 @@
 extern crate sfml;
 extern crate rand;
+extern crate serde;
+extern crate serde_json;
 
 mod ant;
 mod colony;
@@ -8,6 +10,7 @@ mod game;
 mod pheromone;
 mod ui;
 mod ecs;
+mod save;
 
 use game::Game;
 

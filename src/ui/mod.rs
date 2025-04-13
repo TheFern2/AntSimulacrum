@@ -41,7 +41,7 @@ impl UI {
         status_text.set_fill_color(Color::BLACK);
 
         let mut control_text = Text::new(
-            "[W]all | [F]ood | [R]emove | [N]est | [A]nt | [ESC]lear | [SPACE]Pause", 
+            "[W]all | [F]ood | [R]emove | [N]est | [A]nt | [S]ave | [L]oad | [ESC]lear | [SPACE]Pause", 
             font_ref, 
             14
         );
@@ -62,27 +62,17 @@ impl UI {
         // No UI elements to interact with now
     }
     
-    pub fn update(&mut self, current_mode: &InteractionMode, simulation_speed: f32, paused: bool) {
+    pub fn update(&mut self, interaction_mode: &InteractionMode, simulation_speed: f32, paused: bool) {
         // Save current mode for rendering
-        self.current_mode = current_mode.clone();
+        self.current_mode = interaction_mode.clone();
         
-        // Update status text
-        let mode_text = match current_mode {
-            InteractionMode::None => "Browse",
-            InteractionMode::AddWall => "Add Wall",
-            InteractionMode::AddFood => "Add Food",
-            InteractionMode::RemoveObject => "Remove Objects",
-            InteractionMode::AddAntNest => "Add Ant Nest",
-            InteractionMode::AddAnt => "Add Ant",
-        };
-        
+        // Update status text - ONLY show game status, not controls
         let status = format!(
-            "Mode: {} | Speed: {:.1}x | {}",
-            mode_text,
+            "Mode: {:?} | Speed: {:.1}x | {}",
+            interaction_mode,
             simulation_speed,
             if paused { "PAUSED" } else { "Running" }
         );
-        
         self.status_text.set_string(&status);
     }
     
@@ -119,12 +109,16 @@ impl UI {
             ("[R]emove", InteractionMode::RemoveObject),
             ("[N]est", InteractionMode::AddAntNest),
             ("[A]nt", InteractionMode::AddAnt),
+            ("[S]ave", InteractionMode::None),
+            ("[L]oad", InteractionMode::None),
             ("[ESC]lear", InteractionMode::None),
             ("[SPACE]Pause", InteractionMode::None)
         ];
 
-        // Calculate the total width for positioning
-        let base_x = self.width as f32 - self.control_text.global_bounds().width - 10.0;
+        // Calculate starting x position - we'll position at the right side of the window
+        // First estimate the total width 
+        let total_width_estimate = 400.0; // Rough estimate to ensure it's not too tight against the right edge
+        let base_x = self.width as f32 - total_width_estimate - 10.0;
         let base_y = self.height as f32 - STATUS_BAR_HEIGHT + 5.0;
         let mut current_x = base_x;
         

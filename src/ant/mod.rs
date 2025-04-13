@@ -264,4 +264,49 @@ impl Ant {
         window.draw(&ant_body);
         window.draw(&ant_head);
     }
+
+    // Accessor methods for save/load functionality
+    pub fn get_position(&self) -> Vector2f {
+        self.position
+    }
+    
+    pub fn get_direction(&self) -> f32 {
+        self.direction
+    }
+    
+    pub fn set_direction(&mut self, direction: f32) {
+        self.direction = direction;
+    }
+    
+    pub fn get_speed(&self) -> f32 {
+        self.speed
+    }
+    
+    pub fn set_speed(&mut self, speed: f32) {
+        self.speed = speed;
+    }
+    
+    pub fn is_carrying_food(&self) -> bool {
+        self.carrying_food
+    }
+    
+    pub fn set_carrying_food(&mut self, carrying_food: bool) {
+        self.carrying_food = carrying_food;
+    }
+    
+    pub fn get_home_position(&self) -> Vector2f {
+        self.home_position
+    }
+    
+    pub fn set_home_position(&mut self, home_position: Vector2f) {
+        self.home_position = home_position;
+    }
+    
+    pub fn get_pheromone_deposit_timer(&self) -> f32 {
+        self.pheromone_deposit_timer
+    }
+    
+    pub fn set_pheromone_deposit_timer(&mut self, timer: f32) {
+        self.pheromone_deposit_timer = timer;
+    }
 } 
