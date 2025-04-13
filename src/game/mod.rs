@@ -5,6 +5,8 @@ use sfml::cpp::FBox;
 
 use crate::environment::Environment;
 use crate::ui::UI;
+use crate::ant::Ant;
+use rand::random;
 
 pub enum InteractionMode {
     None,
@@ -22,6 +24,7 @@ pub struct Game {
     simulation_speed: f32,
     paused: bool,
     left_mouse_pressed: bool,
+    test_ants: Vec<Ant>, // Just for testing, will move to ECS later
 }
 
 impl Game {
@@ -39,6 +42,15 @@ impl Game {
         let environment = Environment::new(width, height);
         let ui = UI::new(width, height);
         
+        // Create some test ants
+        let mut test_ants = Vec::new();
+        for _ in 0..50 {
+            test_ants.push(Ant::new(
+                random::<f32>() * width as f32,
+                random::<f32>() * height as f32
+            ));
+        }
+        
         Self {
             window,
             environment,
@@ -47,6 +59,7 @@ impl Game {
             simulation_speed: 1.0,
             paused: false,
             left_mouse_pressed: false,
+            test_ants,
         }
     }
     
@@ -140,7 +153,14 @@ impl Game {
     fn update(&mut self) {
         if !self.paused {
             let delta_time = self.simulation_speed / 60.0; // Assuming 60 FPS
+            
+            // Update environment
             self.environment.update(delta_time);
+            
+            // Update test ants
+            for ant in &mut self.test_ants {
+                ant.update(delta_time, &mut self.environment);
+            }
         }
         
         self.ui.update(&self.interaction_mode, self.simulation_speed, self.paused);
@@ -150,6 +170,12 @@ impl Game {
         self.window.clear(Color::rgb(240, 230, 210)); // Light sandy color
         
         self.environment.render(&mut self.window);
+        
+        // Render test ants
+        for ant in &self.test_ants {
+            ant.render(&mut self.window);
+        }
+        
         self.ui.render(&mut self.window);
         
         self.window.display();

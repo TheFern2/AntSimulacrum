@@ -1,5 +1,6 @@
-use super::world::World;
-use super::component::{ComponentType, AntState};
+use crate::ecs::world::World;
+use crate::ecs::entity::EntityId;
+use crate::ecs::component::AntState;
 use sfml::graphics::{RenderWindow, CircleShape, RectangleShape, Color, Transformable, Shape, RenderTarget};
 use sfml::system::Vector2f;
 use std::f32::consts::PI;
@@ -9,7 +10,7 @@ pub trait System {
     /// Update the system
     fn update(&mut self, world: &mut World, delta_time: f32);
     
-    /// Get the name of the system for debugging
+    /// Get the system name
     fn name(&self) -> &str;
 }
 
@@ -329,5 +330,18 @@ impl System for AntBehaviorSystem {
     
     fn name(&self) -> &str {
         "AntBehaviorSystem"
+    }
+}
+
+// Example system, to be expanded later
+pub struct ExampleSystem;
+
+impl System for ExampleSystem {
+    fn update(&mut self, _world: &mut World, _delta_time: f32) {
+        // Example system implementation goes here
+    }
+    
+    fn name(&self) -> &str {
+        "ExampleSystem"
     }
 } 

@@ -1,4 +1,5 @@
 use std::any::Any;
+use sfml::system::Vector2f;
 
 /// Enum defining all possible component types
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
