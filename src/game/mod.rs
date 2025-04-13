@@ -8,6 +8,7 @@ use crate::ui::UI;
 use crate::ant::Ant;
 use rand::random;
 
+#[derive(Clone)]
 pub enum InteractionMode {
     None,
     AddWall,
@@ -92,6 +93,23 @@ impl Game {
                 }
                 Event::MouseMoved { x, y } => {
                     self.handle_mouse_move(x, y);
+                }
+                Event::Resized { width, height } => {
+                    // Get the current view
+                    let mut view = self.window.view().to_owned();
+                    
+                    // Update the view size
+                    view.set_size((width as f32, height as f32));
+                    view.set_center((width as f32 / 2.0, height as f32 / 2.0));
+                    
+                    // Apply the view
+                    self.window.set_view(&view);
+                    
+                    // Inform UI of the resize
+                    self.ui.resize(width, height);
+                    
+                    // We could also update environment grid if needed
+                    // For now we'll keep the original grid size
                 }
                 _ => {}
             }
