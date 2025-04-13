@@ -133,7 +133,7 @@ impl Game {
             Key::R => self.interaction_mode = InteractionMode::RemoveObject,
             Key::N => self.interaction_mode = InteractionMode::AddAntNest,
             Key::A => self.interaction_mode = InteractionMode::AddAnt,
-            Key::Escape => self.interaction_mode = InteractionMode::None,
+            Key::Escape => self.window.close(),
             Key::S => {
                 // Save the game state
                 if let Err(e) = self.save_game() {

@@ -43,7 +43,7 @@ impl UI {
         status_text.set_fill_color(Color::BLACK);
 
         let mut control_text = Text::new(
-            "[W]all | [F]ood | [R]emove | [N]est | [A]nt | [S]ave | [L]oad | [ESC]lear | [SPACE]Pause", 
+            "[W]all | [F]ood | [R]emove | [N]est | [A]nt | [S]ave | [L]oad | [ESC]Exit | [SPACE]Pause", 
             font_ref, 
             14
         );
@@ -138,7 +138,7 @@ impl UI {
             ("[A]nt", InteractionMode::AddAnt),
             ("[S]ave", InteractionMode::None),
             ("[L]oad", InteractionMode::None),
-            ("[ESC]lear", InteractionMode::None),
+            ("[ESC]Exit", InteractionMode::None),
             ("[SPACE]Pause", InteractionMode::None)
         ];
 
