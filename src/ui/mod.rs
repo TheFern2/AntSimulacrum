@@ -106,52 +106,53 @@ impl UI {
         // Draw status text
         window.draw(&self.status_text);
         
-        // Get a font reference to create the underlined text
+        // Get a font reference to create the text elements
         let font_ref = unsafe { 
             let raw_ptr = &**self.font as *const Font;
             &*raw_ptr 
         };
         
-        // Create an underlined version of the control text that shows which mode is active
-        let controls = match self.current_mode {
-            InteractionMode::None => 
-                "[W]all | [F]ood | [R]emove | [N]est | [A]nt | [ESC]lear | [SPACE]Pause",
-            InteractionMode::AddWall => 
-                "[W]all | [F]ood | [R]emove | [N]est | [A]nt | [ESC]lear | [SPACE]Pause",
-            InteractionMode::AddFood => 
-                "[W]all | [F]ood | [R]emove | [N]est | [A]nt | [ESC]lear | [SPACE]Pause",
-            InteractionMode::RemoveObject => 
-                "[W]all | [F]ood | [R]emove | [N]est | [A]nt | [ESC]lear | [SPACE]Pause",
-            InteractionMode::AddAntNest => 
-                "[W]all | [F]ood | [R]emove | [N]est | [A]nt | [ESC]lear | [SPACE]Pause",
-            InteractionMode::AddAnt => 
-                "[W]all | [F]ood | [R]emove | [N]est | [A]nt | [ESC]lear | [SPACE]Pause",
-        };
-        self.control_text.set_string(controls);
+        // Define the parts of the control text
+        let parts = [
+            ("[W]all", InteractionMode::AddWall),
+            ("[F]ood", InteractionMode::AddFood),
+            ("[R]emove", InteractionMode::RemoveObject),
+            ("[N]est", InteractionMode::AddAntNest),
+            ("[A]nt", InteractionMode::AddAnt),
+            ("[ESC]lear", InteractionMode::None),
+            ("[SPACE]Pause", InteractionMode::None)
+        ];
+
+        // Calculate the total width for positioning
+        let base_x = self.width as f32 - self.control_text.global_bounds().width - 10.0;
+        let base_y = self.height as f32 - STATUS_BAR_HEIGHT + 5.0;
+        let mut current_x = base_x;
         
-        // Create underlined version of the active control
-        let mut highlight = Text::new("", font_ref, 14);
-        highlight.set_style(sfml::graphics::TextStyle::UNDERLINED);
-        highlight.set_fill_color(Color::BLACK);
-        
-        // Position and text based on active mode
-        let (text, offset) = match self.current_mode {
-            InteractionMode::AddWall => ("[W]all", 0),
-            InteractionMode::AddFood => ("[F]ood", 8),
-            InteractionMode::RemoveObject => ("[R]emove", 16),
-            InteractionMode::AddAntNest => ("[N]est", 27),
-            InteractionMode::AddAnt => ("[A]nt", 36),
-            InteractionMode::None => ("", 0), // No underline for None mode
-        };
-        
-        if !text.is_empty() {
-            highlight.set_string(text);
-            let base_x = self.control_text.position().x + offset as f32;
-            highlight.set_position(Vector2f::new(base_x, self.height as f32 - STATUS_BAR_HEIGHT + 5.0));
-            window.draw(&highlight);
+        // Draw each part of the control text with appropriate styling
+        for (i, (text_part, mode)) in parts.iter().enumerate() {
+            let mut part_text = Text::new(*text_part, font_ref, 14);
+            part_text.set_fill_color(Color::BLACK);
+            
+            // Add underline style if this is the active mode
+            if !matches!(self.current_mode, InteractionMode::None) && 
+               std::mem::discriminant(&self.current_mode) == std::mem::discriminant(mode) {
+                part_text.set_style(sfml::graphics::TextStyle::UNDERLINED);
+            }
+            
+            part_text.set_position(Vector2f::new(current_x, base_y));
+            window.draw(&part_text);
+            
+            // Add separator between controls except for the last one
+            if i < parts.len() - 1 {
+                let separator = " | ";
+                let mut sep_text = Text::new(separator, font_ref, 14);
+                sep_text.set_fill_color(Color::BLACK);
+                sep_text.set_position(Vector2f::new(current_x + part_text.global_bounds().width, base_y));
+                window.draw(&sep_text);
+                current_x += part_text.global_bounds().width + sep_text.global_bounds().width;
+            } else {
+                current_x += part_text.global_bounds().width;
+            }
         }
-        
-        // Draw control text
-        window.draw(&self.control_text);
     }
 } 
