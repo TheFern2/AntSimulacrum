@@ -255,20 +255,40 @@ impl Ant {
         let env_width = environment.get_width() as f32;
         let env_height = environment.get_height() as f32;
         
+        let mut did_bounce = false;
+        
         if self.position.x < margin {
             self.position.x = margin;
             self.direction = std::f32::consts::PI - self.direction;
+            did_bounce = true;
         } else if self.position.x > env_width - margin {
             self.position.x = env_width - margin;
             self.direction = std::f32::consts::PI - self.direction;
+            did_bounce = true;
         }
         
         if self.position.y < margin {
             self.position.y = margin;
             self.direction = -self.direction;
+            did_bounce = true;
         } else if self.position.y > env_height - margin {
             self.position.y = env_height - margin;
             self.direction = -self.direction;
+            did_bounce = true;
+        }
+        
+        // Add significant randomness when bouncing off edges to prevent circling
+        if did_bounce {
+            // Add a larger random variation (up to +/- 45 degrees)
+            self.direction += (rand::random::<f32>() - 0.5) * std::f32::consts::PI / 2.0;
+            
+            // Temporarily ignore pheromones
+            self.ignore_pheromones_timer = 1.0;
+            
+            // Move slightly away from edge to prevent getting stuck
+            let bounce_step = 3.0;
+            self.position.x += self.direction.cos() * bounce_step;
+            self.position.y += self.direction.sin() * bounce_step;
         }
     }
     
